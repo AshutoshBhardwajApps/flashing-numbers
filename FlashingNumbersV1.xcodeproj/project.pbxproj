@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		0AADE526030DE58A9033C180 /* AdManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8710866625A8D399C3B12F33 /* AdManager.swift */; };
+		2748E7DCCEF5BD90E7DD228A /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = C88BC8D15DC8AF682209396F /* PrivacyInfo.xcprivacy */; };
 		8AB99B9D64CC3ADB843BCCE0 /* StatsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78706C4D2E1C55AB458465DE /* StatsStore.swift */; };
 		92ACADA80622C4148936850B /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 147F954D11F77F59C48F9A0F /* AppDelegate.swift */; };
 		C7BF03180A5D096B5804091E /* AdPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CCF90A1CCBCAF4A70F978C1 /* AdPresenter.swift */; };
@@ -43,6 +44,7 @@
 		8710866625A8D399C3B12F33 /* AdManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdManager.swift; sourceTree = "<group>"; };
 		8CCF90A1CCBCAF4A70F978C1 /* AdPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdPresenter.swift; sourceTree = "<group>"; };
 		A41C49C7F01713F9944FA2E3 /* Pods-FlashingNumbersV1.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-FlashingNumbersV1.debug.xcconfig"; path = "Target Support Files/Pods-FlashingNumbersV1/Pods-FlashingNumbersV1.debug.xcconfig"; sourceTree = "<group>"; };
+		C88BC8D15DC8AF682209396F /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		D5FBAFEE9ED609AC5D658C94 /* HighScoresView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = HighScoresView.swift; sourceTree = "<group>"; };
 		E16974112C9A693400A1CD8B /* FlashingNumbersV1.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FlashingNumbersV1.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E16974162C9A693400A1CD8B /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -108,6 +110,7 @@
 				E169741A2C9A693500A1CD8B /* Preview Content */,
 				78706C4D2E1C55AB458465DE /* StatsStore.swift */,
 				D5FBAFEE9ED609AC5D658C94 /* HighScoresView.swift */,
+				C88BC8D15DC8AF682209396F /* PrivacyInfo.xcprivacy */,
 			);
 			path = FlashingNumbersV1;
 			sourceTree = "<group>";
@@ -192,6 +195,7 @@
 			files = (
 				E169741C2C9A693500A1CD8B /* Preview Assets.xcassets in Resources */,
 				E16974192C9A693500A1CD8B /* Assets.xcassets in Resources */,
+				2748E7DCCEF5BD90E7DD228A /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
