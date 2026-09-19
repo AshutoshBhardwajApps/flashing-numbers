@@ -11,6 +11,15 @@ final class StatsStore: ObservableObject {
     /// exactly this. Time is what ranks a run; accuracy is the tiebreaker.
     static let targetScore = 10
 
+    /// Added to the final time for every tap that did not land on the target.
+    ///
+    /// Misses used to be free, so hammering the screen caught all ten targets
+    /// and posted a fast time that measured tapping speed rather than aim.
+    /// Charging for them in the currency the run is ranked by makes spamming
+    /// strictly worse without forbidding it: a careful run pays a second or
+    /// two, a spammed one pays most of a minute.
+    static let wrongTapPenalty: TimeInterval = 0.5
+
     struct Record: Equatable {
         /// Fastest completion, in seconds.
         var bestTime: TimeInterval

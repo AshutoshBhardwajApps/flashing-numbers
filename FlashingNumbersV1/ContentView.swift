@@ -171,10 +171,19 @@ struct GameView: View {
     @State private var hits: Int = 0
     @State private var result: RunResult?
 
+    /// Drives the brief "+0.50s" flash on a miss. The token guards against
+    /// overlapping taps, where an earlier tap's hide would otherwise clear the
+    /// indicator a later one had just raised.
+    @State private var showPenalty = false
+    @State private var penaltyToken = 0
+
     struct RunResult {
-        let time: TimeInterval
+        let rawTime: TimeInterval
+        let penalty: TimeInterval
         let accuracy: Double
         let isNewBest: Bool
+
+        var total: TimeInterval { rawTime + penalty }
     }
 
     let selectedLevel: Int
@@ -205,6 +214,13 @@ struct GameView: View {
                             .font(.system(size: 100))
                             .foregroundColor(.cyan)
                     }
+
+                    // Always in the layout and only faded, so raising it on a
+                    // miss cannot shift the numbers above it mid-game.
+                    Text("+\(StatsStore.timeString(StatsStore.wrongTapPenalty))")
+                        .font(.title2.bold())
+                        .foregroundColor(.red)
+                        .opacity(showPenalty ? 1 : 0)
                 }
 
                 Spacer()
@@ -290,12 +306,18 @@ struct GameView: View {
                     levelUp()
                 }
             } else if matchMissed, let lastTime = lastMatchTime {
+                // Still a tap that did not land on the target, so it is charged
+                // like any other miss. Acknowledging a missed target and simply
+                // tapping at nothing cost the same, which keeps the rule one
+                // sentence long: every tap off the target costs time.
                 missTime = now.timeIntervalSince(lastTime)
                 showMissTime = true
                 fadeOutMissTime()
                 matchMissed = false
+                flashPenalty()
             } else {
                 provideFeedback(isCorrect: false)
+                flashPenalty()
             }
         }
     }
@@ -303,16 +325,26 @@ struct GameView: View {
     @ViewBuilder
     private func summary(_ result: RunResult) -> some View {
         ZStack {
-            Color.black.opacity(0.85).ignoresSafeArea()
+            // Opaque, not a scrim. At 85% the live game bled through and the
+            // labels behind collided with the result text on top of them.
+            Color.black.ignoresSafeArea()
 
             VStack(spacing: 18) {
                 Text(result.isNewBest ? "New Record!" : "Complete!")
                     .font(.largeTitle.bold())
                     .foregroundColor(result.isNewBest ? .yellow : .white)
 
-                Text(StatsStore.timeString(result.time))
+                Text(StatsStore.timeString(result.total))
                     .font(.system(size: 56, weight: .bold, design: .rounded))
                     .foregroundColor(.cyan)
+
+                // Spelling the penalty out matters: without it a player who
+                // spammed their way to a bad time has no idea why it was bad.
+                if result.penalty > 0 {
+                    Text("\(StatsStore.timeString(result.rawTime)) + \(StatsStore.timeString(result.penalty)) missed taps")
+                        .font(.footnote)
+                        .foregroundColor(.red.opacity(0.9))
+                }
 
                 Text("\(StatsStore.targetScore) catches · \(StatsStore.percentString(result.accuracy)) accuracy")
                     .font(.subheadline)
@@ -341,17 +373,36 @@ struct GameView: View {
         }
     }
 
+    /// Raises the "+0.50s" indicator for a beat. The token means a later tap's
+    /// flash is not cut short by an earlier tap's scheduled hide.
+    private func flashPenalty() {
+        penaltyToken += 1
+        let token = penaltyToken
+        withAnimation(.easeOut(duration: 0.1)) { showPenalty = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) {
+            guard token == penaltyToken else { return }
+            withAnimation { showPenalty = false }
+        }
+    }
+
     func finishRun() {
         gameRunning = false
         timer?.invalidate()
+        showPenalty = false
 
         let elapsed = Date().timeIntervalSince(runStart ?? Date())
+        // Every tap that was not a hit is charged, so this covers both a tap at
+        // nothing and a late tap acknowledging a target already gone.
+        let penalty = Double(max(0, taps - hits)) * StatsStore.wrongTapPenalty
         let accuracy = taps > 0 ? Double(hits) / Double(taps) : 0
         let isNewBest = StatsStore.shared.submit(level: selectedLevel,
-                                                 time: elapsed,
+                                                 time: elapsed + penalty,
                                                  hits: hits,
                                                  taps: taps)
-        result = RunResult(time: elapsed, accuracy: accuracy, isNewBest: isNewBest)
+        result = RunResult(rawTime: elapsed,
+                           penalty: penalty,
+                           accuracy: accuracy,
+                           isNewBest: isNewBest)
 
         // A finished run is the natural ad break. Pacing still applies, so this
         // stays at one interstitial per 90s however quick the runs get.
@@ -370,6 +421,7 @@ struct GameView: View {
         runStart = Date()
         taps = 0
         hits = 0
+        showPenalty = false
         result = nil
 
         switch selectedLevel {

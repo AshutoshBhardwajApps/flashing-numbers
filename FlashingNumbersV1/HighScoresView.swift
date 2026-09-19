@@ -21,9 +21,14 @@ struct HighScoresView: View {
                     .foregroundColor(.white)
                     .padding(.top, 40)
 
-                Text("Fastest run to \(StatsStore.targetScore) catches")
-                    .font(.subheadline)
-                    .foregroundColor(.white.opacity(0.6))
+                VStack(spacing: 4) {
+                    Text("Fastest run to \(StatsStore.targetScore) catches")
+                        .font(.subheadline)
+                        .foregroundColor(.white.opacity(0.6))
+                    Text("Every missed tap adds \(StatsStore.timeString(StatsStore.wrongTapPenalty))")
+                        .font(.caption)
+                        .foregroundColor(.white.opacity(0.4))
+                }
 
                 VStack(spacing: 16) {
                     ForEach(1...3, id: \.self) { level in
