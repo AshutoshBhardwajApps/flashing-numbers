@@ -11,14 +11,24 @@ final class StatsStore: ObservableObject {
     /// exactly this. Time is what ranks a run; accuracy is the tiebreaker.
     static let targetScore = 10
 
-    /// Added to the final time for every tap that did not land on the target.
+    /// Runs are scored on **reaction time only**: the clock runs from the
+    /// moment the target appears until it is tapped, and stops in between.
     ///
-    /// Misses used to be free, so hammering the screen caught all ten targets
-    /// and posted a fast time that measured tapping speed rather than aim.
-    /// Charging for them in the currency the run is ranked by makes spamming
-    /// strictly worse without forbidding it: a careful run pays a second or
-    /// two, a spammed one pays most of a minute.
-    static let wrongTapPenalty: TimeInterval = 0.5
+    /// Wall-clock time was unusable. The target shows up with probability 1/10
+    /// per tick, so most of a run is spent waiting rather than reacting, and
+    /// that wait is wildly variable. Simulated over 20,000 runs, one player
+    /// with zero variation in skill finished level 1 anywhere from 40s to 106s,
+    /// while a 60% difference in actual reaction speed moved the mean by under
+    /// two seconds — a deliberately sluggish player beat a sharp one 47% of the
+    /// time. The table was very nearly a random number generator. Scoring only
+    /// the reaction windows drops that to 0%.
+    static let wrongTapPenalty: TimeInterval = 0.25
+
+    /// Bumped from `fn.` when scoring moved from wall-clock to reaction time.
+    /// Old records are seconds of a completely different quantity — around 70
+    /// against the new ~4 — so every first run would have "beaten" them.
+    /// Changing the prefix orphans them instead of showing nonsense.
+    private static let keyPrefix = "fn2"
 
     struct Record: Equatable {
         /// Fastest completion, in seconds.
@@ -77,20 +87,22 @@ final class StatsStore: ObservableObject {
 
     // MARK: - Persistence
 
+    private static func timeKey(_ level: Int) -> String { "\(keyPrefix).best.time.\(level)" }
+    private static func accAtBestKey(_ level: Int) -> String { "\(keyPrefix).best.accAtBest.\(level)" }
+    private static func accKey(_ level: Int) -> String { "\(keyPrefix).best.acc.\(level)" }
+    private static func completionsKey(_ level: Int) -> String { "\(keyPrefix).completions.\(level)" }
+
     private static func keys(level: Int) -> [String] {
-        ["fn.best.time.\(level)",
-         "fn.best.accAtBest.\(level)",
-         "fn.best.acc.\(level)",
-         "fn.completions.\(level)"]
+        [timeKey(level), accAtBestKey(level), accKey(level), completionsKey(level)]
     }
 
     private func save(level: Int) {
         guard let r = records[level] else { return }
         let d = UserDefaults.standard
-        d.set(r.bestTime, forKey: "fn.best.time.\(level)")
-        d.set(r.accuracyAtBest, forKey: "fn.best.accAtBest.\(level)")
-        d.set(r.bestAccuracy, forKey: "fn.best.acc.\(level)")
-        d.set(r.completions, forKey: "fn.completions.\(level)")
+        d.set(r.bestTime, forKey: Self.timeKey(level))
+        d.set(r.accuracyAtBest, forKey: Self.accAtBestKey(level))
+        d.set(r.bestAccuracy, forKey: Self.accKey(level))
+        d.set(r.completions, forKey: Self.completionsKey(level))
     }
 
     private func load() {
@@ -99,12 +111,12 @@ final class StatsStore: ObservableObject {
             // completions is the presence flag. A stored bestTime of 0 is
             // indistinguishable from "never set" once read back as a Double,
             // so it cannot be the thing that decides whether a record exists.
-            let completions = d.integer(forKey: "fn.completions.\(level)")
+            let completions = d.integer(forKey: Self.completionsKey(level))
             guard completions > 0 else { continue }
             records[level] = Record(
-                bestTime: d.double(forKey: "fn.best.time.\(level)"),
-                accuracyAtBest: d.double(forKey: "fn.best.accAtBest.\(level)"),
-                bestAccuracy: d.double(forKey: "fn.best.acc.\(level)"),
+                bestTime: d.double(forKey: Self.timeKey(level)),
+                accuracyAtBest: d.double(forKey: Self.accAtBestKey(level)),
+                bestAccuracy: d.double(forKey: Self.accKey(level)),
                 completions: completions
             )
         }

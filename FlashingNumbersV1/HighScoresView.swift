@@ -22,9 +22,12 @@ struct HighScoresView: View {
                     .padding(.top, 40)
 
                 VStack(spacing: 4) {
-                    Text("Fastest run to \(StatsStore.targetScore) catches")
+                    Text("Best reaction total over \(StatsStore.targetScore) catches")
                         .font(.subheadline)
                         .foregroundColor(.white.opacity(0.6))
+                    Text("Only the time the target is on screen counts")
+                        .font(.caption)
+                        .foregroundColor(.white.opacity(0.4))
                     Text("Every missed tap adds \(StatsStore.timeString(StatsStore.wrongTapPenalty))")
                         .font(.caption)
                         .foregroundColor(.white.opacity(0.4))

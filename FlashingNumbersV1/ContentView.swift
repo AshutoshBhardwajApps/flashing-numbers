@@ -166,27 +166,29 @@ struct GameView: View {
 
     /// Run tracking. `taps` counts every tap made while playing and `hits`
     /// only the ones that landed on the target, so accuracy is hits over taps.
-    @State private var runStart: Date?
-    /// Set the moment a run stops, which freezes the HUD clock. Without it the
-    /// timer would keep climbing behind the summary.
-    @State private var runEnd: Date?
+    ///
+    /// Only the reaction windows are timed. `targetShownAt` is stamped the
+    /// instant the target appears and cleared the instant it goes, so waiting
+    /// for it to turn up — which is luck, not skill — costs nothing.
+    @State private var targetShownAt: Date?
+    @State private var reactionTotal: TimeInterval = 0
     @State private var taps: Int = 0
     @State private var hits: Int = 0
     @State private var result: RunResult?
 
-    /// Drives the brief "+0.50s" flash on a miss. The token guards against
+    /// Drives the brief penalty flash on a miss. The token guards against
     /// overlapping taps, where an earlier tap's hide would otherwise clear the
     /// indicator a later one had just raised.
     @State private var showPenalty = false
     @State private var penaltyToken = 0
 
     struct RunResult {
-        let rawTime: TimeInterval
+        let reaction: TimeInterval
         let penalty: TimeInterval
         let accuracy: Double
         let isNewBest: Bool
 
-        var total: TimeInterval { rawTime + penalty }
+        var total: TimeInterval { reaction + penalty }
     }
 
     let selectedLevel: Int
@@ -194,29 +196,43 @@ struct GameView: View {
 
     // MARK: - Run clock
     //
-    // The HUD and the filed record read the same three accessors, so the number
-    // the player watched climbing is exactly the one that gets stored.
+    // The HUD and the filed record read the same accessors, so the number the
+    // player watched climbing is exactly the one that gets stored.
 
-    private var elapsedSeconds: TimeInterval {
-        guard let start = runStart else { return 0 }
-        return (runEnd ?? Date()).timeIntervalSince(start)
+    /// True only while the target is on screen, which is the only time the
+    /// clock runs. Watching it stop and start teaches the player what is being
+    /// measured without a word of explanation.
+    private var targetIsShowing: Bool { gameRunning && targetShownAt != nil }
+
+    /// The reaction window currently in progress, if any.
+    private var liveReaction: TimeInterval {
+        guard targetIsShowing, let shown = targetShownAt else { return 0 }
+        return Date().timeIntervalSince(shown)
     }
 
     private var penaltySeconds: TimeInterval {
         Double(max(0, taps - hits)) * StatsStore.wrongTapPenalty
     }
 
-    /// What the clock shows and what gets recorded: elapsed plus every penalty
-    /// accrued so far, so a miss visibly costs half a second the instant it
-    /// happens rather than being a surprise on the summary.
-    private var displayedTime: TimeInterval { elapsedSeconds + penaltySeconds }
+    /// Reactions banked so far, plus the one in progress, plus penalties. Never
+    /// includes time spent waiting for the target to turn up.
+    private var displayedTime: TimeInterval {
+        reactionTotal + liveReaction + penaltySeconds
+    }
 
     private var clockLabel: some View {
-        Text(StatsStore.timeString(displayedTime))
-            // Monospaced digits, or the whole line shivers as digits of
-            // different widths tick past.
-            .font(.system(size: 44, weight: .bold, design: .rounded).monospacedDigit())
-            .foregroundColor(.white)
+        VStack(spacing: 2) {
+            Text("Reaction")
+                .font(.caption)
+                // Dimmed while the clock is parked, so a frozen readout reads
+                // as "not counting" rather than as the game having hung.
+                .foregroundColor(.white.opacity(targetIsShowing ? 0.8 : 0.35))
+            Text(StatsStore.timeString(displayedTime))
+                // Monospaced digits, or the whole line shivers as digits of
+                // different widths tick past.
+                .font(.system(size: 44, weight: .bold, design: .rounded).monospacedDigit())
+                .foregroundColor(targetIsShowing ? .white : .white.opacity(0.55))
+        }
     }
 
     var body: some View {
@@ -255,10 +271,10 @@ struct GameView: View {
 
                 Spacer()
 
-                // Only ticks while a run is live. Once it stops, the frozen
-                // label renders on its own rather than redrawing 50x a second
-                // behind the summary.
-                if gameRunning {
+                // Only ticks while the target is actually on screen. The rest
+                // of the time there is nothing to count, so the static label
+                // renders instead of redrawing 50x a second.
+                if targetIsShowing {
                     TimelineView(.periodic(from: .now, by: 0.02)) { _ in
                         clockLabel
                     }
@@ -335,6 +351,13 @@ struct GameView: View {
             // swallow a tap that was genuinely on the target, which feels unfair
             // and would quietly corrupt the accuracy record.
             if currentNumber == targetNumber {
+                // Bank only the time the target was actually on screen. The
+                // wait before it appeared is luck and is not counted.
+                if let shown = targetShownAt {
+                    reactionTotal += now.timeIntervalSince(shown)
+                }
+                targetShownAt = nil
+
                 hits += 1
                 score += 1
                 missTime = nil
@@ -384,7 +407,7 @@ struct GameView: View {
                 // Spelling the penalty out matters: without it a player who
                 // spammed their way to a bad time has no idea why it was bad.
                 if result.penalty > 0 {
-                    Text("\(StatsStore.timeString(result.rawTime)) + \(StatsStore.timeString(result.penalty)) missed taps")
+                    Text("\(StatsStore.timeString(result.reaction)) + \(StatsStore.timeString(result.penalty)) missed taps")
                         .font(.footnote)
                         .foregroundColor(.red.opacity(0.9))
                 }
@@ -416,7 +439,7 @@ struct GameView: View {
         }
     }
 
-    /// Raises the "+0.50s" indicator for a beat. The token means a later tap's
+    /// Raises the penalty indicator for a beat. The token means a later tap's
     /// flash is not cut short by an earlier tap's scheduled hide.
     private func flashPenalty() {
         penaltyToken += 1
@@ -432,20 +455,20 @@ struct GameView: View {
         gameRunning = false
         timer?.invalidate()
         showPenalty = false
-        // Stop the clock before reading it, so the recorded time is the one the
-        // player last saw rather than one that crept on while this ran.
-        runEnd = Date()
+        // Park the clock before reading it. The winning tap already banked its
+        // reaction, so there is nothing left in progress to count.
+        targetShownAt = nil
 
-        let elapsed = elapsedSeconds
+        let reaction = reactionTotal
         // Every tap that was not a hit is charged, so this covers both a tap at
         // nothing and a late tap acknowledging a target already gone.
         let penalty = penaltySeconds
         let accuracy = taps > 0 ? Double(hits) / Double(taps) : 0
         let isNewBest = StatsStore.shared.submit(level: selectedLevel,
-                                                 time: elapsed + penalty,
+                                                 time: reaction + penalty,
                                                  hits: hits,
                                                  taps: taps)
-        result = RunResult(rawTime: elapsed,
+        result = RunResult(reaction: reaction,
                            penalty: penalty,
                            accuracy: accuracy,
                            isNewBest: isNewBest)
@@ -464,8 +487,8 @@ struct GameView: View {
         missTime = nil
         matchMissed = false
 
-        runStart = Date()
-        runEnd = nil
+        targetShownAt = nil
+        reactionTotal = 0
         taps = 0
         hits = 0
         showPenalty = false
@@ -492,9 +515,9 @@ struct GameView: View {
         gameRunning = false
         timer?.invalidate()
         currentNumber = 0
-        // Freeze the clock here too, or an abandoned run leaves it counting up
-        // on a screen nobody is playing.
-        if wasRunning { runEnd = Date() }
+        // Park the clock here too, or an abandoned run leaves the reaction
+        // window counting up on a screen nobody is playing.
+        targetShownAt = nil
 
         guard wasRunning else { return }
         AdManager.shared.noteRoundCompleted()
@@ -509,6 +532,10 @@ struct GameView: View {
                 lastMatchTime = Date()
             }
             currentNumber = Int.random(in: 1...10)
+            // Start or stop the reaction window with the target itself. If the
+            // target comes up twice running, the stamp resets: the player had a
+            // full tick at the first one and let it go.
+            targetShownAt = (currentNumber == targetNumber) ? Date() : nil
         }
     }
 
@@ -533,6 +560,11 @@ struct GameView: View {
 
     func levelUp() {
         targetNumber = Int.random(in: 1...10)
+        // The freshly drawn target can happen to be the number already on
+        // screen, in which case its window is open from this moment — the next
+        // tick is a whole interval away and would otherwise credit the player
+        // with time they were already being shown.
+        targetShownAt = (currentNumber == targetNumber) ? Date() : nil
         if level < 10 {
             timeInterval = max(0.1, timeInterval * 0.9)
             level += 1
