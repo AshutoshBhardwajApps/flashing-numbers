@@ -4,6 +4,7 @@ import SwiftUI
 struct ContentView: View {
     @State private var showWelcomeView = true
     @State private var gameStarted = false
+    @State private var showHighScores = false
     @State private var selectedLevel = 1
 
     var body: some View {
@@ -11,8 +12,14 @@ struct ContentView: View {
             WelcomeView(showWelcomeView: $showWelcomeView)
         } else if gameStarted {
             GameView(selectedLevel: selectedLevel, gameStarted: $gameStarted)
+        } else if showHighScores {
+            // A sibling of the menu rather than a screen reached through the
+            // game, so nothing on the way in or out can trigger an ad.
+            HighScoresView(showHighScores: $showHighScores)
         } else {
-            IntroScreen(gameStarted: $gameStarted, selectedLevel: $selectedLevel)
+            IntroScreen(gameStarted: $gameStarted,
+                        selectedLevel: $selectedLevel,
+                        showHighScores: $showHighScores)
         }
     }
 }
@@ -20,6 +27,7 @@ struct ContentView: View {
 struct IntroScreen: View {
     @Binding var gameStarted: Bool
     @Binding var selectedLevel: Int
+    @Binding var showHighScores: Bool
 
     var body: some View {
         VStack(spacing: 40) {
@@ -45,6 +53,14 @@ struct IntroScreen: View {
                 gameStarted = true
             }
             .padding().background(Color.red).foregroundColor(.white).cornerRadius(10)
+
+            Button("High Scores") {
+                showHighScores = true
+            }
+            .padding()
+            .background(Color.orange)
+            .foregroundColor(.white)
+            .cornerRadius(10)
         }
     }
 }
@@ -148,6 +164,19 @@ struct GameView: View {
     @State private var backgroundColor = Color.black
     @State private var level: Int = 1
 
+    /// Run tracking. `taps` counts every tap made while playing and `hits`
+    /// only the ones that landed on the target, so accuracy is hits over taps.
+    @State private var runStart: Date?
+    @State private var taps: Int = 0
+    @State private var hits: Int = 0
+    @State private var result: RunResult?
+
+    struct RunResult {
+        let time: TimeInterval
+        let accuracy: Double
+        let isNewBest: Bool
+    }
+
     let selectedLevel: Int
     @Binding var gameStarted: Bool
 
@@ -219,6 +248,10 @@ struct GameView: View {
                 }
                 .padding(.bottom)
             }
+
+            if let result {
+                summary(result)
+            }
         }
         .onAppear {
             backgroundColor = .black
@@ -236,24 +269,94 @@ struct GameView: View {
             guard gameRunning else { return }
 
             let now = Date()
+            taps += 1
 
-            if matchMissed, let lastTime = lastMatchTime {
-                missTime = now.timeIntervalSince(lastTime)
-                showMissTime = true
-                fadeOutMissTime()
-                matchMissed = false
-            } else if currentNumber == targetNumber {
+            // A tap that landed on the target is checked before the pending-miss
+            // branch. The other order let a stale "you just missed one" state
+            // swallow a tap that was genuinely on the target, which feels unfair
+            // and would quietly corrupt the accuracy record.
+            if currentNumber == targetNumber {
+                hits += 1
                 score += 1
                 missTime = nil
                 lastMatchTime = now
                 showMissTime = false
                 provideFeedback(isCorrect: true)
                 matchMissed = false
-                levelUp()
+
+                if score >= StatsStore.targetScore {
+                    finishRun()
+                } else {
+                    levelUp()
+                }
+            } else if matchMissed, let lastTime = lastMatchTime {
+                missTime = now.timeIntervalSince(lastTime)
+                showMissTime = true
+                fadeOutMissTime()
+                matchMissed = false
             } else {
                 provideFeedback(isCorrect: false)
             }
         }
+    }
+
+    @ViewBuilder
+    private func summary(_ result: RunResult) -> some View {
+        ZStack {
+            Color.black.opacity(0.85).ignoresSafeArea()
+
+            VStack(spacing: 18) {
+                Text(result.isNewBest ? "New Record!" : "Complete!")
+                    .font(.largeTitle.bold())
+                    .foregroundColor(result.isNewBest ? .yellow : .white)
+
+                Text(StatsStore.timeString(result.time))
+                    .font(.system(size: 56, weight: .bold, design: .rounded))
+                    .foregroundColor(.cyan)
+
+                Text("\(StatsStore.targetScore) catches · \(StatsStore.percentString(result.accuracy)) accuracy")
+                    .font(.subheadline)
+                    .foregroundColor(.white.opacity(0.75))
+
+                if !result.isNewBest, let best = StatsStore.shared.record(for: selectedLevel) {
+                    Text("Best \(StatsStore.timeString(best.bestTime))")
+                        .font(.footnote)
+                        .foregroundColor(.white.opacity(0.5))
+                }
+
+                HStack(spacing: 16) {
+                    Button("Play Again") {
+                        startGame()
+                    }
+                    .padding().background(Color.blue).foregroundColor(.white).cornerRadius(10)
+
+                    Button("Menu") {
+                        gameStarted = false
+                    }
+                    .padding().background(Color.gray).foregroundColor(.white).cornerRadius(10)
+                }
+                .padding(.top, 8)
+            }
+            .padding(32)
+        }
+    }
+
+    func finishRun() {
+        gameRunning = false
+        timer?.invalidate()
+
+        let elapsed = Date().timeIntervalSince(runStart ?? Date())
+        let accuracy = taps > 0 ? Double(hits) / Double(taps) : 0
+        let isNewBest = StatsStore.shared.submit(level: selectedLevel,
+                                                 time: elapsed,
+                                                 hits: hits,
+                                                 taps: taps)
+        result = RunResult(time: elapsed, accuracy: accuracy, isNewBest: isNewBest)
+
+        // A finished run is the natural ad break. Pacing still applies, so this
+        // stays at one interstitial per 90s however quick the runs get.
+        AdManager.shared.noteRoundCompleted()
+        AdManager.shared.presentIfAllowed()
     }
 
     func startGame() {
@@ -264,6 +367,11 @@ struct GameView: View {
         missTime = nil
         matchMissed = false
 
+        runStart = Date()
+        taps = 0
+        hits = 0
+        result = nil
+
         switch selectedLevel {
         case 2: timeInterval = 0.5
         case 3: timeInterval = 0.25
@@ -273,6 +381,9 @@ struct GameView: View {
         startFlashingNumbers()
     }
 
+    /// Abandoning a run part-way. No record is filed — a time is only
+    /// comparable if it covers the full set of catches — but it is still a
+    /// natural break, so it counts towards ad pacing exactly as before.
     func stopGame() {
         // Stop and Back to Menu are on screen together and both land here, so
         // one game can call this twice. Cleanup is safe to repeat; counting the
