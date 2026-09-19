@@ -167,6 +167,9 @@ struct GameView: View {
     /// Run tracking. `taps` counts every tap made while playing and `hits`
     /// only the ones that landed on the target, so accuracy is hits over taps.
     @State private var runStart: Date?
+    /// Set the moment a run stops, which freezes the HUD clock. Without it the
+    /// timer would keep climbing behind the summary.
+    @State private var runEnd: Date?
     @State private var taps: Int = 0
     @State private var hits: Int = 0
     @State private var result: RunResult?
@@ -188,6 +191,33 @@ struct GameView: View {
 
     let selectedLevel: Int
     @Binding var gameStarted: Bool
+
+    // MARK: - Run clock
+    //
+    // The HUD and the filed record read the same three accessors, so the number
+    // the player watched climbing is exactly the one that gets stored.
+
+    private var elapsedSeconds: TimeInterval {
+        guard let start = runStart else { return 0 }
+        return (runEnd ?? Date()).timeIntervalSince(start)
+    }
+
+    private var penaltySeconds: TimeInterval {
+        Double(max(0, taps - hits)) * StatsStore.wrongTapPenalty
+    }
+
+    /// What the clock shows and what gets recorded: elapsed plus every penalty
+    /// accrued so far, so a miss visibly costs half a second the instant it
+    /// happens rather than being a surprise on the summary.
+    private var displayedTime: TimeInterval { elapsedSeconds + penaltySeconds }
+
+    private var clockLabel: some View {
+        Text(StatsStore.timeString(displayedTime))
+            // Monospaced digits, or the whole line shivers as digits of
+            // different widths tick past.
+            .font(.system(size: 44, weight: .bold, design: .rounded).monospacedDigit())
+            .foregroundColor(.white)
+    }
 
     var body: some View {
         ZStack {
@@ -225,23 +255,36 @@ struct GameView: View {
 
                 Spacer()
 
+                // Only ticks while a run is live. Once it stops, the frozen
+                // label renders on its own rather than redrawing 50x a second
+                // behind the summary.
+                if gameRunning {
+                    TimelineView(.periodic(from: .now, by: 0.02)) { _ in
+                        clockLabel
+                    }
+                } else {
+                    clockLabel
+                }
+
                 HStack {
-                    Text("Score: \(score)")
-                        .font(.title)
+                    Text("Score: \(score)/\(StatsStore.targetScore)")
                         .foregroundColor(.white)
                     Spacer()
                     Text("Level: \(level)")
-                        .font(.title)
                         .foregroundColor(.white)
                     Spacer()
                     Text("Miss: ")
-                        .font(.title)
                         .foregroundColor(.white)
                     Text(missTime != nil ? String(format: "%.2f", missTime!) : "--")
-                        .font(.title)
                         .foregroundColor(.white)
                         .opacity(showMissTime ? 1 : 0)
                 }
+                // Shrink to fit rather than wrap. Adding the "/10" target to
+                // the score pushed this row past the width of an iPhone SE,
+                // where it broke onto two lines and shunted the whole HUD.
+                .font(.title)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
                 .padding(.horizontal)
 
                 HStack(spacing: 20) {
@@ -389,11 +432,14 @@ struct GameView: View {
         gameRunning = false
         timer?.invalidate()
         showPenalty = false
+        // Stop the clock before reading it, so the recorded time is the one the
+        // player last saw rather than one that crept on while this ran.
+        runEnd = Date()
 
-        let elapsed = Date().timeIntervalSince(runStart ?? Date())
+        let elapsed = elapsedSeconds
         // Every tap that was not a hit is charged, so this covers both a tap at
         // nothing and a late tap acknowledging a target already gone.
-        let penalty = Double(max(0, taps - hits)) * StatsStore.wrongTapPenalty
+        let penalty = penaltySeconds
         let accuracy = taps > 0 ? Double(hits) / Double(taps) : 0
         let isNewBest = StatsStore.shared.submit(level: selectedLevel,
                                                  time: elapsed + penalty,
@@ -419,6 +465,7 @@ struct GameView: View {
         matchMissed = false
 
         runStart = Date()
+        runEnd = nil
         taps = 0
         hits = 0
         showPenalty = false
@@ -445,6 +492,9 @@ struct GameView: View {
         gameRunning = false
         timer?.invalidate()
         currentNumber = 0
+        // Freeze the clock here too, or an abandoned run leaves it counting up
+        // on a screen nobody is playing.
+        if wasRunning { runEnd = Date() }
 
         guard wasRunning else { return }
         AdManager.shared.noteRoundCompleted()
