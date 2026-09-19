@@ -34,15 +34,18 @@ final class AdManager: NSObject, ObservableObject {
 
     // MARK: - Pacing
 
-    /// Both buttons that end a game (`Stop` and `Back to Menu`) call
-    /// `stopGame()`, so a single exit can tick the round counter twice. With
-    /// the previous 1-round / 0-second settings that showed two interstitials
-    /// back to back, which is both miserable and the kind of thing AdMob
-    /// suspends accounts over. Require a second round AND a real time gap.
-    private let minRoundsBetweenAds: Int = 2
-    private let minGapSeconds: TimeInterval = 60
+    /// Time is the real governor here, not the round count. A round is one
+    /// play session, and the game has no game-over — it ends only when the
+    /// player taps Stop or Back to Menu — so a round is anything from five
+    /// seconds to twenty minutes. Counting them paces nothing reliably. Every
+    /// session exit is therefore a candidate, and the gap does the limiting.
+    private let minRoundsBetweenAds: Int = 1
+    private let minGapSeconds: TimeInterval = 90
 
-    private var lastShown: Date?
+    /// Seeded at launch rather than left nil, so `minGapSeconds` gates the
+    /// *first* interstitial too. Ungated, someone could install the app, quit
+    /// two five-second games and meet a full-screen ad within ten seconds.
+    private var lastShown: Date? = Date()
     private var roundsSinceLastAd = 0
     private var interstitial: InterstitialAd?
 
