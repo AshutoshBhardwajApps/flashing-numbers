@@ -7,6 +7,9 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0AADE526030DE58A9033C180 /* AdManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8710866625A8D399C3B12F33 /* AdManager.swift */; };
+		92ACADA80622C4148936850B /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 147F954D11F77F59C48F9A0F /* AppDelegate.swift */; };
+		C7BF03180A5D096B5804091E /* AdPresenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CCF90A1CCBCAF4A70F978C1 /* AdPresenter.swift */; };
 		CFE586EE2070CB65F3F7324D /* Pods_FlashingNumbersV1.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 55045E4246FD108DA3270A1C /* Pods_FlashingNumbersV1.framework */; };
 		E16974172C9A693400A1CD8B /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E16974162C9A693400A1CD8B /* ContentView.swift */; };
 		E16974192C9A693500A1CD8B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E16974182C9A693500A1CD8B /* Assets.xcassets */; };
@@ -31,8 +34,11 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		147F954D11F77F59C48F9A0F /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		55045E4246FD108DA3270A1C /* Pods_FlashingNumbersV1.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_FlashingNumbersV1.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		6AE893E41C2E2EB7313B2953 /* Pods-FlashingNumbersV1.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-FlashingNumbersV1.release.xcconfig"; path = "Target Support Files/Pods-FlashingNumbersV1/Pods-FlashingNumbersV1.release.xcconfig"; sourceTree = "<group>"; };
+		8710866625A8D399C3B12F33 /* AdManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdManager.swift; sourceTree = "<group>"; };
+		8CCF90A1CCBCAF4A70F978C1 /* AdPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AdPresenter.swift; sourceTree = "<group>"; };
 		A41C49C7F01713F9944FA2E3 /* Pods-FlashingNumbersV1.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-FlashingNumbersV1.debug.xcconfig"; path = "Target Support Files/Pods-FlashingNumbersV1/Pods-FlashingNumbersV1.debug.xcconfig"; sourceTree = "<group>"; };
 		E16974112C9A693400A1CD8B /* FlashingNumbersV1.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = FlashingNumbersV1.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E16974162C9A693400A1CD8B /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -91,6 +97,9 @@
 				E1EC55CD2DC98816005B1060 /* FlashingNumbersV1.entitlements */,
 				E16974162C9A693400A1CD8B /* ContentView.swift */,
 				E1EC55CB2DC18A6C005B1060 /* FlashingNumbersV1App.swift */,
+				147F954D11F77F59C48F9A0F /* AppDelegate.swift */,
+				8710866625A8D399C3B12F33 /* AdManager.swift */,
+				8CCF90A1CCBCAF4A70F978C1 /* AdPresenter.swift */,
 				E16974182C9A693500A1CD8B /* Assets.xcassets */,
 				E169741A2C9A693500A1CD8B /* Preview Content */,
 			);
@@ -191,13 +200,9 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-FlashingNumbersV1/Pods-FlashingNumbersV1-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-			);
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-FlashingNumbersV1/Pods-FlashingNumbersV1-resources-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -235,6 +240,9 @@
 			files = (
 				E16974172C9A693400A1CD8B /* ContentView.swift in Sources */,
 				E1EC55CC2DC18A6C005B1060 /* FlashingNumbersV1App.swift in Sources */,
+				92ACADA80622C4148936850B /* AppDelegate.swift in Sources */,
+				0AADE526030DE58A9033C180 /* AdManager.swift in Sources */,
+				C7BF03180A5D096B5804091E /* AdPresenter.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

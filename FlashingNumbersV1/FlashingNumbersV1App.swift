@@ -5,7 +5,6 @@
 //  Created by Ashutosh Bhardwaj on 2025-04-29.
 //
 import SwiftUI
-import GoogleMobileAds
 
 @main
 struct FlashingNumbersV1App: App {
@@ -14,16 +13,7 @@ struct FlashingNumbersV1App: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .background(AdPresenter().frame(width: 0, height: 0))
         }
-    }
-}
-
-class AppDelegate: NSObject, UIApplicationDelegate {
-    func application(
-        _ application: UIApplication,
-        didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
-    ) -> Bool {
-        MobileAds.shared.start(completionHandler: nil)
-        return true
     }
 }

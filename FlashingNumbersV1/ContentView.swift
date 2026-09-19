@@ -274,9 +274,18 @@ struct GameView: View {
     }
 
     func stopGame() {
+        // Stop and Back to Menu are on screen together and both land here, so
+        // one game can call this twice. Cleanup is safe to repeat; counting the
+        // round is not — it would bill a single game as two towards the next ad.
+        let wasRunning = gameRunning
+
         gameRunning = false
         timer?.invalidate()
         currentNumber = 0
+
+        guard wasRunning else { return }
+        AdManager.shared.noteRoundCompleted()
+        AdManager.shared.presentIfAllowed()
     }
 
     func startFlashingNumbers() {
