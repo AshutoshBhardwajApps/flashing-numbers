@@ -12,7 +12,8 @@
 	<key>NSPrivacyCollectedDataTypes</key>
 	<array/>
 
-	<!-- StatsStore keeps best times, accuracy and completion counts in
+	<!-- StatsStore keeps best times, accuracy and completion counts, and
+	     SettingsStore keeps the sound toggle and Remove Ads flag, in
 	     UserDefaults, which is a required-reason API. CA92.1 is the reason for
 	     reading and writing only this app's own values. Without this, uploads
 	     can fail ITMS-91053. -->
