@@ -1,7 +1,7 @@
 import Foundation
 
-/// Local records, one set per difficulty. Everything stays in UserDefaults on
-/// the device — nothing is uploaded, so this adds no privacy or ATT surface.
+/// Local records, one set per difficulty, kept in UserDefaults on the device.
+/// Best times are also submitted to Game Center by GameCenterManager.
 @MainActor
 final class StatsStore: ObservableObject {
     static let shared = StatsStore()

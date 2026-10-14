@@ -2,12 +2,27 @@
 import SwiftUI
 
 struct ContentView: View {
+    @EnvironmentObject var settings: SettingsStore
+    @EnvironmentObject var purchaseManager: PurchaseManager
+    @ObservedObject private var ads = AdManager.shared
+
     @State private var showWelcomeView = true
     @State private var gameStarted = false
     @State private var showHighScores = false
+    @State private var showSettings = false
     @State private var selectedLevel = 1
 
     var body: some View {
+        screen
+            .fullScreenCover(isPresented: $ads.promoRequested) {
+                RemoveAdsPromoView(onDismiss: { ads.promoRequested = false })
+                    .environmentObject(settings)
+                    .environmentObject(purchaseManager)
+            }
+    }
+
+    @ViewBuilder
+    private var screen: some View {
         if showWelcomeView {
             WelcomeView(showWelcomeView: $showWelcomeView)
         } else if gameStarted {
@@ -16,18 +31,26 @@ struct ContentView: View {
             // A sibling of the menu rather than a screen reached through the
             // game, so nothing on the way in or out can trigger an ad.
             HighScoresView(showHighScores: $showHighScores)
+        } else if showSettings {
+            // Same reasoning as High Scores.
+            SettingsView(showSettings: $showSettings)
         } else {
             IntroScreen(gameStarted: $gameStarted,
                         selectedLevel: $selectedLevel,
-                        showHighScores: $showHighScores)
+                        showHighScores: $showHighScores,
+                        showSettings: $showSettings)
         }
     }
 }
 
 struct IntroScreen: View {
+    @EnvironmentObject var settings: SettingsStore
+    @EnvironmentObject var purchaseManager: PurchaseManager
     @Binding var gameStarted: Bool
     @Binding var selectedLevel: Int
     @Binding var showHighScores: Bool
+    @Binding var showSettings: Bool
+    @State private var showRemoveAdsSheet = false
 
     var body: some View {
         VStack(spacing: 40) {
@@ -61,6 +84,44 @@ struct IntroScreen: View {
             .background(Color.orange)
             .foregroundColor(.white)
             .cornerRadius(10)
+
+            VStack(spacing: 14) {
+                Button {
+                    showSettings = true
+                } label: {
+                    Label("Settings", systemImage: "gearshape.fill")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundColor(.secondary)
+                }
+
+                // Remove Ads pill — visible only until purchased, as on CoopHockey.
+                if !settings.hasRemovedAds {
+                    Button {
+                        showRemoveAdsSheet = true
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "nosign")
+                            Text("Remove Ads")
+                            if let price = purchaseManager.localizedPrice {
+                                Text("· \(price)")
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .font(.footnote.weight(.semibold))
+                        .foregroundColor(.cyan)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(
+                            Capsule().stroke(Color.cyan.opacity(0.55), lineWidth: 1)
+                        )
+                    }
+                }
+            }
+        }
+        .fullScreenCover(isPresented: $showRemoveAdsSheet) {
+            RemoveAdsPromoView(onDismiss: { showRemoveAdsSheet = false })
+                .environmentObject(settings)
+                .environmentObject(purchaseManager)
         }
     }
 }
@@ -369,6 +430,8 @@ struct GameView: View {
                 if score >= StatsStore.targetScore {
                     finishRun()
                 } else {
+                    SFX.shared.playCatch()
+                    Haptics.shared.catchHit()
                     levelUp()
                 }
             } else if matchMissed, let lastTime = lastMatchTime {
@@ -381,9 +444,13 @@ struct GameView: View {
                 fadeOutMissTime()
                 matchMissed = false
                 flashPenalty()
+                SFX.shared.playMiss()
+                Haptics.shared.miss()
             } else {
                 provideFeedback(isCorrect: false)
                 flashPenalty()
+                SFX.shared.playMiss()
+                Haptics.shared.miss()
             }
         }
     }
@@ -468,15 +535,20 @@ struct GameView: View {
                                                  time: reaction + penalty,
                                                  hits: hits,
                                                  taps: taps)
+        GameCenterManager.shared.recordRunFinished(level: selectedLevel,
+                                                   time: reaction + penalty)
         result = RunResult(reaction: reaction,
                            penalty: penalty,
                            accuracy: accuracy,
                            isNewBest: isNewBest)
 
+        SFX.shared.playComplete()
+        Haptics.shared.runComplete()
+
         // A finished run is the natural ad break. Pacing still applies, so this
-        // stays at one interstitial per 90s however quick the runs get.
-        AdManager.shared.noteRoundCompleted()
-        AdManager.shared.presentIfAllowed()
+        // stays at one interstitial (or promo) per 90s however quick the runs
+        // get — bar the forced promo every 8th break.
+        AdManager.shared.runAdBreak()
     }
 
     func startGame() {
@@ -520,8 +592,7 @@ struct GameView: View {
         targetShownAt = nil
 
         guard wasRunning else { return }
-        AdManager.shared.noteRoundCompleted()
-        AdManager.shared.presentIfAllowed()
+        AdManager.shared.runAdBreak()
     }
 
     func startFlashingNumbers() {

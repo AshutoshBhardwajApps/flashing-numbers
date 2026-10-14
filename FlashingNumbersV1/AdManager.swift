@@ -47,12 +47,21 @@ final class AdManager: NSObject, ObservableObject {
     /// two five-second games and meet a full-screen ad within ten seconds.
     private var lastShown: Date? = Date()
     private var roundsSinceLastAd = 0
+    private var roundsSincePromo = 0
     private var interstitial: InterstitialAd?
+
+    /// Guarantee a Remove Ads promo every Nth ad break, bypassing the pacing
+    /// gates (ported from CoopHockey). Random 1-in-12 rolls fill the gaps.
+    private let forcePromoEvery: Int = 8
+
+    /// Raised in place of an interstitial; ContentView shows the promo as a
+    /// fullScreenCover at the root, so it survives "Back to Menu" swapping
+    /// the game view out from under it.
+    @Published var promoRequested = false
 
     private override init() { super.init() }
 
-    // No purchase/remove-ads system in this app yet — always enabled.
-    private var adsDisabled: Bool { false }
+    private var adsDisabled: Bool { SettingsStore.shared.hasRemovedAds }
 
     // MARK: - Preload
 
@@ -87,6 +96,37 @@ final class AdManager: NSObject, ObservableObject {
     func noteRoundCompleted() {
         guard !adsDisabled else { return }
         roundsSinceLastAd += 1
+        roundsSincePromo += 1
+    }
+
+    /// Whether to show the Remove Ads promo in place of an interstitial.
+    ///   1. Forced: every Nth break, bypassing the pacing gates.
+    ///   2. Random: ~1-in-12 on other breaks, still subject to pacing.
+    func shouldShowPromoInsteadOfAd() -> Bool {
+        guard !adsDisabled else { return false }
+        if roundsSincePromo >= forcePromoEvery { return true }
+        guard roundsSinceLastAd >= minRoundsBetweenAds else { return false }
+        if let last = lastShown, Date().timeIntervalSince(last) < minGapSeconds { return false }
+        return Int.random(in: 0..<12) == 0
+    }
+
+    /// A promo consumes the ad slot the same way a real ad would.
+    func notePromoShown() {
+        roundsSinceLastAd = 0
+        roundsSincePromo = 0
+        lastShown = Date()
+    }
+
+    /// One call per natural break (finished or abandoned run): count it, then
+    /// either raise the Remove Ads promo or try an interstitial.
+    func runAdBreak() {
+        noteRoundCompleted()
+        if shouldShowPromoInsteadOfAd() {
+            notePromoShown()
+            promoRequested = true
+            return
+        }
+        presentIfAllowed()
     }
 
     // MARK: - Present
@@ -127,6 +167,18 @@ final class AdManager: NSObject, ObservableObject {
 
     // MARK: - Presenter helpers
 
+    /// The controller actually on top of the presentation stack. Anything
+    /// shown from inside a sheet or fullScreenCover (Ad Inspector, a future
+    /// rewarded ad) must present from here, not AdPresenter's anchor — UIKit
+    /// refuses to present from a controller that is already presenting.
+    static func topmostPresenterVC() -> UIViewController? {
+        let scenes = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .filter { $0.activationState == .foregroundActive }
+        let root = scenes.first?.windows.first(where: { $0.isKeyWindow })?.rootViewController
+        return topViewController(base: root) ?? AdPresenter.holder
+    }
+
     private static func presenterVC() -> UIViewController? {
         if let vc = AdPresenter.holder, vc.viewIfLoaded?.window != nil { return vc }
         let scenes = UIApplication.shared.connectedScenes
@@ -150,6 +202,11 @@ extension AdManager: FullScreenContentDelegate {
     func adWillPresentFullScreenContent(_ ad: any FullScreenPresentingAd) {
         print("[AdManager] ▶️ presenting")
         NotificationCenter.default.post(name: .adWillPresent, object: nil)
+    }
+
+    /// The only callback that confirms AdMob actually counted the render.
+    func adDidRecordImpression(_ ad: any FullScreenPresentingAd) {
+        print("[AdManager] ✅ impression recorded")
     }
 
     func ad(_ ad: any FullScreenPresentingAd, didFailToPresentFullScreenContentWithError error: Error) {

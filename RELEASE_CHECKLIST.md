@@ -10,8 +10,9 @@ This is the master copy. **Do not tick boxes in it.** For each release, copy it 
 mkdir -p releases && cp RELEASE_CHECKLIST.md releases/1.0.3-5.md
 ```
 
-Line numbers below are accurate as of build 4 (`a333c09`) and will drift — the symbol
-or key name next to each is the reliable part.
+Line numbers below were accurate as of build 4 (`a333c09`) and have drifted since
+build 5 added consent, Remove Ads and settings — the symbol or key name next to each is
+the reliable part.
 
 ### Project facts worth having open
 
@@ -23,6 +24,7 @@ or key name next to each is the reliable part.
 | Deployment target | iOS 17.5 |
 | AdMob app ID | `ca-app-pub-2320635595451132~1388657149` |
 | Production interstitial unit | `ca-app-pub-2320635595451132/5967571100` |
+| Remove Ads IAP (non-consumable) | `flashingnumbers.removeads` (`SettingsStore.removeAdsProductID`) |
 | Repo | `github.com/AshutoshBhardwajApps/flashing-numbers`, branch `main` |
 | Dependency manager | CocoaPods — **always open `FlashingNumbersV1.xcworkspace`** |
 
@@ -46,7 +48,7 @@ or key name next to each is the reliable part.
       `git status --short | grep -v "DS_Store\|xcuserstate"`
 - [ ] On `main`, and in sync with origin: `git status -sb`
 - [ ] Tag the release commit and push the tag —
-      `git tag -a v1.0.2-4 -m "1.0.2 (4)" && git push origin v1.0.2-4`
+      `git tag -a v1.0.3-5 -m "1.0.3 (5)" && git push origin v1.0.3-5`
       *(the repo has **no tags at all** today; start here so future releases can diff
       against the last shipped one)*
 - [ ] **Production ad unit is in place.** `AdManager.productionInterstitialID`
@@ -60,7 +62,7 @@ or key name next to each is the reliable part.
       → must print **only** `ca-app-pub-2320635595451132/5967571100`
 - [ ] `GADApplicationIdentifier` still `ca-app-pub-2320635595451132~1388657149`
       (`FlashingNumbersV1/Info.plist:5`)
-- [ ] SKAdNetwork IDs present — expect **76** entries including Meta's
+- [ ] SKAdNetwork IDs present — expect **87** entries (CoopHockey's list) including Meta's
       `v9wttpbfk9` and `n38lu8286q`:
       `plutil -p FlashingNumbersV1/Info.plist | grep -c SKAdNetworkIdentifier`
 - [ ] `NSUserTrackingUsageDescription` present (`Info.plist:9`) and the wording still
@@ -92,14 +94,24 @@ or key name next to each is the reliable part.
         -archivePath build/FN.xcarchive archive
       ```
 - [ ] Archive sanity: version, build, and that every source file actually compiled in —
-      `strings <archive>/dSYMs/FlashingNumbersV1.app.dSYM/Contents/Resources/DWARF/FlashingNumbersV1 | grep -oE "^(AdManager|AdPresenter|AppDelegate|ContentView|StatsStore|HighScoresView|App)\.swift" | sort -u`
+      `strings <archive>/dSYMs/FlashingNumbersV1.app.dSYM/Contents/Resources/DWARF/FlashingNumbersV1 | grep -oE "^(AdManager|AdPresenter|AppDelegate|ConsentManager|ContentView|Haptics|HighScoresView|PurchaseManager|RemoveAdsPromoView|SettingsStore|SettingsView|SFX|StatsStore|App)\.swift" | sort -u`
       *(shipping 1.0.1 with zero ad code went unnoticed because nobody checked this)*
 - [ ] **Device smoke test** on a real iPhone via TestFlight:
   - [ ] ATT prompt appears once, shortly after launch, not before the first frame
+        (and, in the EEA/UK, only *after* the UMP consent form has been answered)
   - [ ] Play a full run to 10 catches; summary shows time, accuracy, record state
   - [ ] Reaction clock runs **only** while the target is on screen and dims when parked
   - [ ] A missed tap flashes `+0.25s` and the time increases by that much
   - [ ] High Scores persists across an app relaunch
+  - [ ] Game Center sign-in banner appears at launch; after a full run,
+        Settings → Leaderboards shows the time on that level's board
+  - [ ] Catch / miss / finish each give a sound and a haptic; turning off
+        Settings → Sound Effects & Haptics silences all three
+  - [ ] Every 8th ad break shows the Remove Ads promo instead of an interstitial,
+        and "Continue with ads" lands back on the summary or menu
+  - [ ] Sandbox purchase of Remove Ads succeeds, the pill and promo disappear,
+        no further interstitials show, and Restore Purchases re-applies it after a
+        delete-and-reinstall
   - [ ] Interstitial actually **presents** (not just loads) — no ad in the first 90s,
         then at most one per 90s (`minRoundsBetweenAds` / `minGapSeconds`,
         `AdManager.swift:42-43`)
@@ -108,10 +120,11 @@ or key name next to each is the reliable part.
         If a live ad appears the hash is wrong — take the new one from the Xcode console
         (`To get test ads on this device, set: ... testDeviceIdentifiers = @[ ... ]`).
         **Never tap a live ad on your own device**
-- [ ] **UMP / consent flow** — ⚠️ `GoogleUserMessagingPlatform` 3.0.0 is installed but
-      **no code ever calls it**; there is no consent flow in this app.
-      TODO: decide whether to implement UMP before serving EEA/UK traffic, or leave the
-      app effectively US-only. Google requires a certified CMP for European users
+- [ ] **UMP / consent flow** — `ConsentManager` (ported from CoopHockey in build 5) runs
+      UMP, then ATT, then preloads ads, on `didBecomeActive` + 0.4s. To see the form on
+      a non-EEA device: set `ConsentManager.forceEEAForTesting = true` in a DEBUG build,
+      launch, then use Settings → DEBUG → "Reset consent" before testing again.
+      **Turn the flag back off before archiving**
 
 ---
 
@@ -154,10 +167,19 @@ or key name next to each is the reliable part.
       Category heavily restricts third-party ads and would break the AdMob integration)
 - [ ] **Export compliance** — answered by `ITSAppUsesNonExemptEncryption = false` in
       Info.plist from build 4 onward; only HTTPS via the ad SDKs, which is exempt
-- [ ] **In-app purchases** — none in this app (no StoreKit usage anywhere in
-      `FlashingNumbersV1/`). Skip unless that changes
-- [ ] Pricing and availability unchanged (free, all territories) —
-      TODO: confirm whether EEA/UK should stay enabled while there is no UMP consent flow
+- [ ] **In-app purchases** — Remove Ads, non-consumable, product ID
+      `flashingnumbers.removeads` (must match `SettingsStore.removeAdsProductID`
+      exactly). First time only: create it, add price, display name, description and
+      review screenshot, and **attach it to this version** under "In-App Purchases and
+      Subscriptions" — an IAP not attached to the version it ships with is never
+      reviewed, and stays "Waiting for Review" forever
+- [ ] **Game Center** — enabled for the app, with three Classic leaderboards created:
+      `flashingnumbers.leaderboard.besttime.level1`, `…level2`, `…level3`. Each needs
+      the score format "Elapsed Time – To the Hundredth of a Second" and the sort
+      order **Low to High**. Add them to this version under Game Center. IDs must
+      match `GameCenterManager.Leaderboard` exactly, or submissions fail silently
+- [ ] Pricing and availability unchanged (free, all territories). EEA/UK are safe
+      to keep from build 5 on, as long as the AdMob GDPR message is published (below)
 - [ ] **Review notes** — TODO: state that the app shows interstitial ads at the end of a
       run, that the first ad is withheld for 90 seconds after launch so a reviewer may
       need two runs to see one, and that no login is required
@@ -198,10 +220,10 @@ or key name next to each is the reliable part.
 - [ ] **Test devices** — the registered hash at `AppDelegate.swift:34-36` is deliberate
       and safe to ship; it only forces test ads on that one device. Remove entries for
       devices you no longer own
-- [ ] **GDPR / UMP message published** — TODO: no consent flow exists in the app, so
-      there is nothing to publish yet. If EEA/UK is enabled, create and publish the
-      GDPR message in AdMob **and** implement the UMP call before relying on European
-      traffic
+- [ ] **GDPR / UMP message published** — Privacy & messaging → GDPR → create a message
+      for Flashing Numbers, link the privacy policy URL, and **Publish**. The app has
+      called UMP since build 5; until a message is published UMP has nothing to show and
+      EEA users only get non-personalised ads
 
 ---
 
@@ -244,6 +266,7 @@ or key name next to each is the reliable part.
 | 1.0 | 1 | 2025-05-03 | Initial release |
 | 1.0.1 | 2 | 2026-07-26 | Marketing URL added so AdMob could crawl app-ads.txt. Contained **no ad code** despite the AdMob SDK being linked |
 | 1.0.2 | 4 | TODO: release date | First build that actually serves ads; reaction-time scoring, high scores, run ends at 10 catches. Build 3 was uploaded then superseded by 4, which adds the privacy manifest and export compliance key |
+| 1.0.3 | 5 | TODO: release date | Caught up with CoopHockey: UMP consent before ATT, Remove Ads IAP with promo every 8th break, Settings screen, sound effects and haptics, full SKAdNetwork list |
 
 ### What went into 1.0.2
 
