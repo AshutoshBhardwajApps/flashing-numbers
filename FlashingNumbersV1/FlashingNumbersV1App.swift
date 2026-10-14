@@ -12,6 +12,7 @@ struct FlashingNumbersV1App: App {
 
     @StateObject private var settings        = SettingsStore.shared
     @StateObject private var purchaseManager = PurchaseManager.shared
+    @StateObject private var gameCenter      = GameCenterManager.shared
 
     var body: some Scene {
         WindowGroup {
@@ -19,7 +20,11 @@ struct FlashingNumbersV1App: App {
                 .background(AdPresenter().frame(width: 0, height: 0))
                 .environmentObject(settings)
                 .environmentObject(purchaseManager)
+                .environmentObject(gameCenter)
                 .task {
+                    // Game Center may present its own sign-in sheet, so this
+                    // runs from .task rather than the AppDelegate.
+                    gameCenter.authenticate()
                     await purchaseManager.loadProducts()
                     await purchaseManager.restorePurchases()
                 }

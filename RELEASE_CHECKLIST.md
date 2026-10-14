@@ -103,6 +103,8 @@ the reliable part.
   - [ ] Reaction clock runs **only** while the target is on screen and dims when parked
   - [ ] A missed tap flashes `+0.25s` and the time increases by that much
   - [ ] High Scores persists across an app relaunch
+  - [ ] Game Center sign-in banner appears at launch; after a full run,
+        Settings → Leaderboards shows the time on that level's board
   - [ ] Catch / miss / finish each give a sound and a haptic; turning off
         Settings → Sound Effects & Haptics silences all three
   - [ ] Every 8th ad break shows the Remove Ads promo instead of an interstitial,
@@ -171,6 +173,11 @@ the reliable part.
       review screenshot, and **attach it to this version** under "In-App Purchases and
       Subscriptions" — an IAP not attached to the version it ships with is never
       reviewed, and stays "Waiting for Review" forever
+- [ ] **Game Center** — enabled for the app, with three Classic leaderboards created:
+      `flashingnumbers.leaderboard.besttime.level1`, `…level2`, `…level3`. Each needs
+      the score format "Elapsed Time – To the Hundredth of a Second" and the sort
+      order **Low to High**. Add them to this version under Game Center. IDs must
+      match `GameCenterManager.Leaderboard` exactly, or submissions fail silently
 - [ ] Pricing and availability unchanged (free, all territories). EEA/UK are safe
       to keep from build 5 on, as long as the AdMob GDPR message is published (below)
 - [ ] **Review notes** — TODO: state that the app shows interstitial ads at the end of a

@@ -27,6 +27,7 @@
 		ECE0606B136645B4C75BF55F /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A6B048B5315346D810879D47 /* SettingsView.swift */; };
 		73BA3CFA4C40A8ADD70B6E90 /* Haptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = CAF4AB48A4053A26808011C3 /* Haptics.swift */; };
 		D4BD4ED1B57335F5B99C1581 /* SFX.swift in Sources */ = {isa = PBXBuildFile; fileRef = 662A664EB8B05CEBF2185E20 /* SFX.swift */; };
+		66C096BDE2BFC11CA31BFBFA /* GameCenterManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2D669DDF2A6FB1079FC8F24 /* GameCenterManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -68,6 +69,7 @@
 		A6B048B5315346D810879D47 /* SettingsView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		CAF4AB48A4053A26808011C3 /* Haptics.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = Haptics.swift; sourceTree = "<group>"; };
 		662A664EB8B05CEBF2185E20 /* SFX.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SFX.swift; sourceTree = "<group>"; };
+		E2D669DDF2A6FB1079FC8F24 /* GameCenterManager.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = GameCenterManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -123,6 +125,7 @@
 				E16974182C9A693500A1CD8B /* Assets.xcassets */,
 				E169741A2C9A693500A1CD8B /* Preview Content */,
 				78706C4D2E1C55AB458465DE /* StatsStore.swift */,
+				E2D669DDF2A6FB1079FC8F24 /* GameCenterManager.swift */,
 				DAC90FC16CA896CFB28E974C /* ConsentManager.swift */,
 				5125DA46A25933E67212CF62 /* SettingsStore.swift */,
 				DA53582F1613EE95B4AFA17A /* PurchaseManager.swift */,
@@ -275,6 +278,7 @@
 				0AADE526030DE58A9033C180 /* AdManager.swift in Sources */,
 				C7BF03180A5D096B5804091E /* AdPresenter.swift in Sources */,
 				8AB99B9D64CC3ADB843BCCE0 /* StatsStore.swift in Sources */,
+				66C096BDE2BFC11CA31BFBFA /* GameCenterManager.swift in Sources */,
 				4984C329B27F3B84B06E6FAA /* ConsentManager.swift in Sources */,
 				56EEC373D7AE46CB3C9AC7DF /* SettingsStore.swift in Sources */,
 				C4E604EF4F0BBECCC487F20D /* PurchaseManager.swift in Sources */,

@@ -64,6 +64,17 @@ can never block ads.
   audio files. The audio session is `.ambient` with `.mixWithOthers`.
 - `SFX` and `Haptics` are both gated by `SettingsStore.effectsEnabled`.
 
+## Game Center (`GameCenterManager`)
+
+- Leaderboards only, the same scope as CoopHockey. There's one best-time board
+  per level, `flashingnumbers.leaderboard.besttime.level1` to `level3`. Each is
+  "Elapsed Time – To the Hundredth of a Second", sorted **Low to High**, and
+  submitted in hundredths. The IDs must match App Store Connect exactly.
+- `finishRun()` submits the run time. On sign-in, the bests already in
+  `StatsStore` are re-submitted, so runs played while signed out still count.
+- Auth runs from the App struct's `.task` and everything no-ops when the player
+  isn't signed in. The entitlements file carries `com.apple.developer.game-center`.
+
 ## Versioning
 
 `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` appear twice each in
@@ -72,7 +83,6 @@ bottom of `RELEASE_CHECKLIST.md`.
 
 ## Not ported yet
 
-- Game Center leaderboards (a best time per level would suit this game).
 - Rewarded ads (nothing to earn yet).
 - SPM migration and Liftoff/Pangle mediation.
 

@@ -8,6 +8,7 @@ import GoogleMobileAds
 struct SettingsView: View {
     @EnvironmentObject var settings: SettingsStore
     @EnvironmentObject var purchaseManager: PurchaseManager
+    @EnvironmentObject var gameCenter: GameCenterManager
     @Binding var showSettings: Bool
 
     var body: some View {
@@ -58,6 +59,24 @@ struct SettingsView: View {
                 }
                 #endif
 
+                Section("GAME CENTER") {
+                    Button {
+                        gameCenter.showLeaderboards()
+                    } label: {
+                        HStack {
+                            Image(systemName: "trophy")
+                            Text("Leaderboards")
+                            Spacer()
+                            if !gameCenter.isAuthenticated {
+                                Text("Not signed in")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                    }
+                    .disabled(!gameCenter.isAuthenticated)
+                }
+
                 Section("ABOUT") {
                     NavigationLink {
                         CreditsView()
@@ -98,6 +117,7 @@ struct CreditsView: View {
             Section("FRAMEWORKS") {
                 LabeledContent("Ads",      value: "Google Mobile Ads SDK")
                 LabeledContent("Payments", value: "StoreKit")
+                LabeledContent("Leaderboards", value: "Game Center")
             }
         }
         .navigationTitle("Credits")

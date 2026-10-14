@@ -535,6 +535,8 @@ struct GameView: View {
                                                  time: reaction + penalty,
                                                  hits: hits,
                                                  taps: taps)
+        GameCenterManager.shared.recordRunFinished(level: selectedLevel,
+                                                   time: reaction + penalty)
         result = RunResult(reaction: reaction,
                            penalty: penalty,
                            accuracy: accuracy,
