@@ -12,3 +12,13 @@ target 'FlashingNumbersV1' do
   pod 'Google-Mobile-Ads-SDK'
   pod 'GoogleMobileAdsMediationFacebook', '~> 6.21'
 end
+
+# Pod specs still declare 12.0/13.0, which current Xcode refuses to build.
+# Lift every pod target to the app's own deployment target.
+post_install do |installer|
+  installer.pods_project.targets.each do |target|
+    target.build_configurations.each do |config|
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '17.5'
+    end
+  end
+end
